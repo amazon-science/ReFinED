@@ -1,12 +1,7 @@
-## My Project
+## ReFinED
 
 TODO: Fill this README out!
 
-Be sure to:
-
-* Change the title in this README
-* Edit your repository description on GitHub
-* Write in your license below and create a LICENSE file
 
 ## Security
 
@@ -14,5 +9,5 @@ See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more inform
 
 ## License
 
-This library is licensed under the LICENSE NAME HERE License.
+This library is licensed under the CC-BY-NC 4.0 License.
 
