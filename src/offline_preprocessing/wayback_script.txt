@@ -1,0 +1,50 @@
+Page ids
+wget -r -H -nc -np -nH --cut-dirs=1 -R .tar,.zip -e robots=off -l1 "https://web.archive.org/web/20191122021609/https://dumps.wikimedia.org/enwiki/latest/enwiki-latest-page.sql.gz"
+
+
+Redirects
+wget -r -H -nc -np -nH --cut-dirs=1 -R .tar,.zip -e robots=off -l1 "https://web.archive.org/web/20191122021609/https://dumps.wikimedia.org/enwiki/latest/enwiki-latest-redirect.sql.gz"
+
+Page articles
+wget -r -H -nc -np -nH --cut-dirs=1 -R .tar,.zip -e robots=off -l1 "https://web.archive.org/web/20191122021609/https://dumps.wikimedia.org/enwiki/latest/enwiki-latest-pages-articles.xml.bz2"
+
+
+Wikidata dump
+# wget -r -H -nc -np -nH --cut-dirs=1 -R .tar,.zip -e robots=off -l1 "https://web.archive.org/web/20191122021609/https://dumps.wikimedia.org/wikidatawiki/entities/latest-all.json.bz2"
+wget -r -H -nc -np -nH --cut-dirs=1 -R .tar,.zip -e robots=off -l1 "https://web.archive.org/web/20190930113616/https://dumps.wikimedia.org/wikidatawiki/entities/latest-all.json.bz2"
+
+wget -r -H -nc -np -nH --cut-dirs=1 -R .tar,.zip -e robots=off -l1 "https://archive.org/download/wikibase-wikidatawiki-20190114/wikidata-20190114-all.json.bz2"
+
+
+# Wikidata Feb 2019 https://archive.org/details/wikibase-wikidatawiki-20190114
+# Wikipedia Jan 2019 https://archive.org/details/enwiki-20190120
+
+
+
+Wikipeida Feb 1 2019 - https://archive.org/details/enwiki-20190201
+Wikidata Feb 1 2019 - https://archive.org/details/wikibase-wikidatawiki-20190201
+
+
+https://archive.org/compress/wikibase-wikidatawiki-20190121/formats=ARCHIVE%20BITTORRENT,METADATA,BZIP2,GZIP,JSON%20GZ,TEXT
+
+
+
+
+# Wikidata
+# https://web.archive.org/web/20190326182455/https://dumps.wikimedia.org/wikidatawiki/entities/latest-all.json.bz2
+wget -r -H -nc -np -nH --cut-dirs=1 -R .tar,.zip -e robots=off -l1 "https://archive.org/download/wikibase-wikidatawiki-20190114/wikidata-20190114-all.json.bz2"
+
+
+# page ids
+wget -r -H -nc -np -nH --cut-dirs=1 -R .tar,.zip -e robots=off -l1 "https://archive.org/download/enwiki-20190201/enwiki-20190201-page.sql.gz"
+# https://archive.org/download/enwiki-20190201/enwiki-20190201-page.sql.gz
+
+# redirects
+wget -r -H -nc -np -nH --cut-dirs=1 -R .tar,.zip -e robots=off -l1 "https://web.archive.org/web/20190201090003/https://dumps.wikimedia.org/enwiki/latest/enwiki-latest-redirect.sql.gz"
+
+# page articles
+wget -r -H -nc -np -nH --cut-dirs=1 -R .tar,.zip -e robots=off -l1 "https://archive.org/download/enwiki-20190201/enwiki-20190201-pages-articles.xml.bz2"
+# https://archive.org/download/enwiki-20190201/enwiki-20190201-pages-articles.xml.bz2
+
+
+

@@ -1,0 +1,35 @@
+
+SELECT ?classLabel (COUNT(?subj) as ?cnt)
+WHERE
+{
+     ?subj p:P2302 ?statement.
+     ?statement ps:P2302 wd:Q21503250.  # replace with Q21510865 for value type constraints Q21503250 value
+     ?statement pq:P2308 ?class.
+     ?statement pq:P2309 wd:Q21503252.
+     FILTER NOT EXISTS { ?subj wdt:P31 wd:Q19847637}
+     FILTER NOT EXISTS {?class wdt:P279 wd:Q17442446}
+     FILTER NOT EXISTS {?class wdt:P279 wd:Q15138389}
+     SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+
+}
+GROUP BY ?classLabel
+ORDER BY DESC(?cnt)
+LIMIT 100
+
+SELECT ?classLabel (COUNT(?subj) as ?cnt)
+WHERE
+{
+     ?subj p:P2302 ?statement.
+     ?statement ps:P2302 wd:Q21510865.  # replace with Q21510865 for value type constraints Q21503250 value
+     ?statement pq:P2308 ?class.
+     ?statement pq:P2309 wd:Q21503252.
+     FILTER NOT EXISTS { ?subj wdt:P31 wd:Q19847637}
+     FILTER NOT EXISTS {?class wdt:P279 wd:Q17442446}
+     FILTER NOT EXISTS {?class wdt:P279 wd:Q15138389}
+     SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+
+}
+GROUP BY ?classLabel
+ORDER BY DESC(?cnt)
+LIMIT 100
+
