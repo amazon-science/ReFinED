@@ -11,7 +11,7 @@ The ReFinED model architecture is described in the paper below (https://arxiv.or
 ```bibtex
 @inproceedings{ayoola-etal-2022-refined,
     title = "{R}e{F}in{ED}: An Efficient Zero-shot-capable Approach to End-to-End Entity Linking",
-    author = "Ayoola Tom, Tyagi Shubhi, Fisher Joseph, Christodoulopoulos, Christos, Pierleoni, Andrea",
+    author = "Ayoola Tom, Tyagi Shubhi, Fisher Joseph, Christodoulopoulos Christos, Pierleoni Andrea",
     booktitle = "NAACL",
     year = "2022"
 }
@@ -24,7 +24,7 @@ The following paper is an extension of ReFinED which incorporates Knowledge Base
 ```bibtex
 @inproceedings{ayoola-etal-2022-improving,
     title = "Improving Entity Disambiguation by Reasoning over a Knowledge Base",
-    author = "Ayoola Tom, Fisher Joseph, Pierleoni, Andrea",
+    author = "Ayoola Tom, Fisher Joseph, Pierleoni Andrea",
     booktitle = "NAACL",
     year = "2022"
 }
