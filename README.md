@@ -64,7 +64,7 @@ ents = refined.process_text("England won the FIFA World Cup in 1966.")
 print([(ent.text, ent.pred_entity_id, ent.pred_types) for ent in ents])
 ```
 
-####Parameters
+#### Parameters
 
 ***model_name***: We provide two pretrained models
 1. 'wikipedia_model': This is the model which matches the setup described in the paper
