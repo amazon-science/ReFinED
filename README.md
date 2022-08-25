@@ -39,7 +39,7 @@ While classical NER systems, such as widely used spaCy, classify entities to hig
 The setup for ReFinED is very simple because the data files and datasets are downloaded automatically.
 1. Install the dependencies using the command below:
 ```commandline
-pip install -r requirments.txt
+pip install -r requirements.txt
 ```
 
 2. Add the `src` folder to your Python path. One way to do this is by running this command:
