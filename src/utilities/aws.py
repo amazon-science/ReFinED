@@ -4,6 +4,7 @@ import os
 
 from tqdm import tqdm
 from typing import Optional
+from botocore.handlers import disable_signing
 
 
 def tqdm_hook(tqdm_progress_bar: tqdm):
@@ -24,6 +25,7 @@ class S3Manager:
             self._s3 = boto3_session.resource("s3")
         else:
             self._s3 = boto3.resource("s3")
+        self._s3.meta.client.meta.events.register('choose-signer.s3.*', disable_signing)
         self._log = logging.getLogger("S3Manager")
 
     def download_file_if_needed(
