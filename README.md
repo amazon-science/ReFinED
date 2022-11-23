@@ -105,7 +105,7 @@ Expected output:
 ```
 Note that str(span) only returns a few fields of the returned object for readability. Many other fields, such as top-k predictions and predicted fine-grained entity types, are also accessible from the returned `Span`.
 
-###Parameters
+#### Parameters
 ***model_name***: We provide four pretrained models
 1. 'wikipedia_model': This is the model which matches the setup described in the paper
 2. 'wikipedia_model_with_numbers': This model extends the above model, to also include detection of SpaCy numerical data types in 
@@ -132,7 +132,7 @@ in the knowledge base (speeds up inference).
 
 ### Evaluation
 
-###Entity disambiguation
+#### Entity disambiguation
 We provide the script `replicate_results.py` which replicates the results reported in our paper.
 
 Entity disambiguation evaluation is run using the ``eval_all`` function:
@@ -167,7 +167,7 @@ slightly lower, which is expected as the model is also trained to identify numer
 | wikipedia_model_with_numbers   | wikipedia       | 85.1  | 93.5  | 90.3    | 91.7 | 76.4 | 89.4 |
 | wikipedia_model_with_numbers   | wikidata        |  84.9 | 93.6  | 90.0    | 91.2 | 75.8 | 88.9 |
 
-###Entity linking
+#### Entity linking
 Entity linking evaluation is run using the ``eval_all`` function with `el=True`:
 
 ```python
