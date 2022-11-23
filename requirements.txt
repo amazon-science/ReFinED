@@ -1,5 +1,5 @@
 requests
-torch>=1.7.0
+torch>=1.12.1
 numpy>=1.15.4
 nltk>=3.5
 urllib3>=1.25.8
@@ -8,5 +8,8 @@ ujson
 tqdm
 transformers>=4.2.2
 tensorboard
-pynini
-smart_open
+Cython
+lmdb>=1.0
+boto3
+prettyprint
+botocore
