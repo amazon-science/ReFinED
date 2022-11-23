@@ -76,6 +76,11 @@ refined = Refined.from_pretrained(...)
 ### Importing ReFinED as a library
 To import the ReFinED model into your existing code run the commands below (note that the conda commands are only needed on a Mac):
 ```commandline
+pip install https://github.com/amazon-science/ReFinED/archive/refs/tags/V1.zip
+```
+
+Alternatively, if the command above does not work, try the commands below which will install some dependencies using conda.
+```commandline
 conda create -n refined38 -y python=3.8 && conda activate refined38
 conda install -c conda-forge python-lmdb -y
 git clone https://github.com/amazon-science/ReFinED.git
