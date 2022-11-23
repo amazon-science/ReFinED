@@ -5,6 +5,8 @@ from argparse import ArgumentParser
 from dataclasses import dataclass
 from typing import Optional
 
+import torch
+
 from refined.offline_data_generation.clean_wikipedia import str2bool
 from refined.utilities.general_utils import get_logger
 
@@ -16,7 +18,7 @@ class TrainingArgs:
     # TrainingArgs is used to store sensible defaults for training
     class_name: str = 'TrainingArgs'
     experiment_name: str = f'{int(time.time())}'
-    device: str = 'cuda:0'
+    device: str = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     el: bool = True  # end-to-end entity linking (MD + ED + ET) when True else
     # it will train entity disambiguation (ED) and entity typing (ET)
     ed_dropout: float = 0.05

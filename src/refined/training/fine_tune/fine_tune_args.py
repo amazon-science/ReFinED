@@ -3,6 +3,8 @@ from argparse import ArgumentParser
 from dataclasses import dataclass, field
 from typing import Optional
 
+import torch.cuda
+
 from refined.offline_data_generation.clean_wikipedia import str2bool
 from refined.training.train.training_args import TrainingArgs
 
@@ -12,7 +14,7 @@ class FineTuningArgs(TrainingArgs):
     # FineTuningArgs is used to store sensible defaults for fine-tuning
     experiment_name: str = field(default_factory=str)
     class_name: str = 'FineTuningArgs'
-    device: str = 'cuda:0'
+    device: str = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     el: bool = True
     ed_dropout: float = 0.05
     et_dropout: float = 0.10
