@@ -1,4 +1,15 @@
 # ReFinED
+## Quickstart
+```commandline
+pip install https://github.com/amazon-science/ReFinED/archive/refs/tags/V1.zip
+```
+```python
+from refined.inference.processor import Refined
+refined = Refined.from_pretrained(model_name='wikipedia_model_with_numbers',
+                                  entity_set="wikipedia")
+spans = refined.process_text("<add_text_here>")
+```
+
 ## Overview
 ReFinED is an entity linking (EL) system which links entity mentions in documents to their corresponding entities in Wikipedia or Wikidata (over 30M entities).
 The combination of accuracy, speed, and scalability of ReFinED means the system is capable of being deployed to extract entities from web-scale datasets with higher accuracy and an order of magnitude lower cost than existing approaches.
