@@ -160,6 +160,9 @@ def load_pem(pem_file: str, is_test: bool = False, max_cands: Optional[int] = No
             if max_cands:
                 pem[line["surface_form"]] = list(pem[line["surface_form"]].items())[:max_cands]
                 # pem[line["surface_form"]] = line["qcode_probs"][:max_cands]
+            else:
+                pem[line["surface_form"]] = list(pem[line["surface_form"]].items())
+
             line_num += 1
             if is_test and line_num > 10000:
                 break
