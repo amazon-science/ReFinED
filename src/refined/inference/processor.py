@@ -157,6 +157,7 @@ class Refined(object):
         :return: a list of spans with predictions attached to each span (sorted by start indices)
                  or a list of mention dictionary (in distant supervision dataset format) when ds_format is True.
         """
+        print("Processing text: ", text)
         all_spans = []
         if spans is not None:
             doc = Doc.from_text_with_spans(
@@ -374,7 +375,7 @@ class Refined(object):
             span.entity_linking_model_confidence_score = predicted_entity_confidence[span_idx]
             span.top_k_predicted_entities = [
                 (Entity(wikidata_entity_id=f'Q{entity_id}',
-                        wikipedia_entity_title=self.preprocessor.qcode_to_wiki.get(wikidata_id)
+                        wikipedia_entity_title=self.preprocessor.qcode_to_wiki.get(f'Q{entity_id}')
                         if self.preprocessor.qcode_to_wiki is not None else None
                         ),
                  round(score, 4))
