@@ -157,7 +157,6 @@ class Refined(object):
         :return: a list of spans with predictions attached to each span (sorted by start indices)
                  or a list of mention dictionary (in distant supervision dataset format) when ds_format is True.
         """
-        print("Processing text: ", text)
         all_spans = []
         if spans is not None:
             doc = Doc.from_text_with_spans(
