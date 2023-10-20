@@ -1,4 +1,6 @@
-# ReFinED
+# mReFinED
+The following instructions are for ReFinED, more details will updated for mReFinEd later.
+
 ## Quickstart
 ```commandline
 pip install https://github.com/amazon-science/ReFinED/archive/refs/tags/V1.zip
