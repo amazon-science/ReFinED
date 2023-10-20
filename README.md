@@ -1,5 +1,5 @@
 # mReFinED
-The following instructions are for ReFinED, more details will updated for mReFinEd later.
+The following instructions are for ReFinED, more details will be updated for mReFinED later.
 
 ## Quickstart
 ```commandline
