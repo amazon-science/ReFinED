@@ -18,9 +18,7 @@ from refined.inference.processor import Refined
 from refined.training.fine_tune.fine_tune_args import FineTuningArgs, parse_fine_tuning_args
 from refined.training.train.training_args import TrainingArgs
 from refined.utilities.general_utils import get_logger
-
 LOG = get_logger(name=__name__)
-
 
 def main():
     fine_tuning_args = parse_fine_tuning_args()
@@ -102,7 +100,7 @@ def run_fine_tuning_loops(refined: Refined, fine_tuning_args: TrainingArgs, trai
                           optimizer: AdamW, scheduler, evaluation_dataset_name_to_docs: Dict[str, Iterable[Doc]],
                           checkpoint_every_n_steps: int = 1000000, scaler: GradScaler = GradScaler()):
     model = refined.model
-    best_f1 = 0.0
+    best_recall = 0.0
     for epoch_num in trange(fine_tuning_args.epochs):
         torch.cuda.empty_cache()
         optimizer.zero_grad()
@@ -112,7 +110,7 @@ def run_fine_tuning_loops(refined: Refined, fine_tuning_args: TrainingArgs, trai
             LOG.info(f"lr: {param_group['lr']}")
         total_loss = 0.0
         for step, batch in tqdm(enumerate(training_dataloader), total=len(training_dataloader)):
-            batch = batch.to(fine_tuning_args.device)
+            batch = batch.to(fine_tuning_args.device) 
             with autocast():
                 output = model(batch=batch)
                 loss = output.ed_loss + output.et_loss + (output.description_loss * 0.01)
@@ -124,7 +122,7 @@ def run_fine_tuning_loops(refined: Refined, fine_tuning_args: TrainingArgs, trai
             loss = loss.mean()
             total_loss += loss.item()
 
-            if step % 100 == 99:
+            if step % 100 == 99: 
                 LOG.info(f"Loss: {total_loss / step}")
 
             scaler.scale(loss).backward()
@@ -138,16 +136,14 @@ def run_fine_tuning_loops(refined: Refined, fine_tuning_args: TrainingArgs, trai
                 scheduler.step()
 
             if (step + 1) % checkpoint_every_n_steps == 0:
-                best_f1 = run_checkpoint_eval_and_save(best_f1, evaluation_dataset_name_to_docs, fine_tuning_args,
+                best_recall = run_checkpoint_eval_and_save(best_recall, evaluation_dataset_name_to_docs, fine_tuning_args,
                                                        refined, optimizer=optimizer, scaler=scaler,
                                                        scheduler=scheduler)
 
-        best_f1 = run_checkpoint_eval_and_save(best_f1, evaluation_dataset_name_to_docs, fine_tuning_args,
+        best_recall = run_checkpoint_eval_and_save(best_recall, evaluation_dataset_name_to_docs, fine_tuning_args,
                                                refined, optimizer=optimizer, scaler=scaler,
                                                scheduler=scheduler)
-
-
-def run_checkpoint_eval_and_save(best_f1: float, evaluation_dataset_name_to_docs: Dict[str, Iterable[Doc]],
+def run_checkpoint_eval_and_save(best_recall: float, evaluation_dataset_name_to_docs: Dict[str, Iterable[Doc]],
                                  fine_tuning_args: TrainingArgs, refined: Refined, optimizer: AdamW,
                                  scaler: GradScaler,
                                  scheduler):
@@ -159,20 +155,20 @@ def run_checkpoint_eval_and_save(best_f1: float, evaluation_dataset_name_to_docs
                                   ed_threshold=fine_tuning_args.ed_threshold)
     if fine_tuning_args.checkpoint_metric == 'el':
         LOG.info("Using EL performance for checkpoint metric")
-        average_f1 = mean([metrics.get_f1() for metrics in evaluation_metrics.values() if metrics.el])
+        average_recall = mean([metrics.get_recall() for metrics in evaluation_metrics.values() if metrics.el])
     elif fine_tuning_args.checkpoint_metric == 'ed':
         LOG.info("Using ED performance for checkpoint metric")
-        average_f1 = mean([metrics.get_f1() for metrics in evaluation_metrics.values() if not metrics.el])
+        average_recall = mean([metrics.get_recall() for metrics in evaluation_metrics.values() if not metrics.el])
     else:
         raise Exception("--checkpoint_metric (`checkpoint_metric`) needs to be set to el or ed,")
 
-    if average_f1 > best_f1:
-        LOG.info(f"Obtained best F1 so far of {average_f1:.3f} (previous best {best_f1:.3f})")
-        best_f1 = average_f1
+    if average_recall > best_recall:
+        LOG.info(f"Obtained best recall so far of {average_recall:.3f} (previous best {best_recall:.3f})")
+        best_recall = average_recall
         model_output_dir = os.path.join(fine_tuning_args.output_dir, fine_tuning_args.experiment_name)
         if os.path.exists(model_output_dir):
             shutil.rmtree(model_output_dir)
-        model_output_dir = os.path.join(model_output_dir, f"f1_{average_f1:.4f}")
+        model_output_dir = os.path.join(model_output_dir, f"Recall_{average_recall:.4f}")
         os.makedirs(model_output_dir, exist_ok=True)
         LOG.info(f"Storing model at {model_output_dir} along with optimizer, scheduler, and scaler")
         model_to_save = (
@@ -188,7 +184,8 @@ def run_checkpoint_eval_and_save(best_f1: float, evaluation_dataset_name_to_docs
         torch.save(scaler.state_dict(), os.path.join(model_output_dir, "scaler.pt"))
 
     torch.cuda.empty_cache()
-    return best_f1
+    return best_recall
+
 
 
 def fine_tune_on_docs(refined: Refined, train_docs: Iterable[Doc], eval_docs: Iterable[Doc],

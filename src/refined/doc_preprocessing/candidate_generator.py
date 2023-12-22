@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from random import sample
 from typing import Tuple, List, Any, Mapping, Set, Dict, Optional
+from collections import defaultdict
+
 
 from refined.data_types.base_types import Span
 from refined.utilities.general_utils import unique
@@ -29,10 +31,44 @@ class CandidateGenerator(ABC):
 
 class CandidateGeneratorExactMatch(CandidateGenerator):
 
-    def __init__(self, max_candidates: int, pem: Mapping[str, List[Tuple[str, float]]], human_qcodes: Set[str]):
+    def __init__(self, max_candidates: int, pem: Mapping[str, List[Tuple[str, float]]], human_qcodes: Set[str], combine: bool=True, language: str='None'):
         self.max_candidates = max_candidates
         self.pem = pem
         self.human_qcodes = human_qcodes
+        self.mention2wikidataID: Dict[str, Dict[str, float]] = defaultdict(dict)
+        self.lang_title2wikidataID: Dict[str, Dict[str, float]] = defaultdict(dict)
+        self.language = language
+        self.combine = combine
+        
+    def change_to_pem(self, qcode_link_counts):
+        pem: Dict[str, Dict[str, float]] = defaultdict(dict)
+        total_link_count = sum(qcode_link_counts.values())
+        pem = dict(sorted([(qcode, link_count / total_link_count) for qcode, link_count in
+                                         qcode_link_counts.items()], key=lambda x: x[1], reverse=True))
+        return pem
+    
+    def mgenre_title_mapping(self,surface_form: str, candidate_entities,combine_two_mapping: bool=False):
+        if (self.language,surface_form) in self.lang_title2wikidataID:
+            q_id_select = self.lang_title2wikidataID[(self.language,surface_form)]
+            candidate_entities = dict()
+            for new_cand in list(q_id_select):
+                candidate_entities[new_cand] = 1    
+        
+        if combine_two_mapping and surface_form in self.mention2wikidataID and self.language != 'ar':
+            candidate_entities_m = self.change_to_pem(self.mention2wikidataID[surface_form])
+            max_len = max(len(candidate_entities_m),self.max_candidates) 
+            for new_cand in list(candidate_entities_m.items())[:max_len]:
+                if new_cand[0] not in {cand for cand,pior in candidate_entities.items()}:
+                    candidate_entities[new_cand[0]] = new_cand[1]
+                else:
+                    candidate_entities[new_cand[0]] = max(new_cand[1],candidate_entities[new_cand[0]])
+        elif not combine_two_mapping and surface_form in self.mention2wikidataID:
+            candidate_entities = self.change_to_pem(self.mention2wikidataID[surface_form])
+   
+        
+        direct_cands = list(candidate_entities.items())
+        direct_cands = sorted(direct_cands,key=lambda x: x[1], reverse=True)
+        return direct_cands
 
     def get_candidates(
             self,
@@ -61,16 +97,19 @@ class CandidateGeneratorExactMatch(CandidateGenerator):
 
         surface_form_norm = normalize_surface_form(surface_form, remove_the=True)
         if surface_form_norm not in self.pem:
-            if surface_form_norm in person_coref_ref:
-                cands = person_coref_ref[surface_form_norm]
-                return (cands + [("Q0", 0.0)] * max_cands)[:max_cands], person_coref_ref
-            else:
+            candidate_entities = dict()
+            direct_cands = self.mgenre_title_mapping(surface_form,candidate_entities=candidate_entities)
+            if not direct_cands:
                 return [("Q0", 0.0)] * max_cands, person_coref_ref
-
-        # surface is in pem
-        # direct candidates - means the surface form was directly in pem lookup
-        direct_cands = self.pem[surface_form_norm]
-
+        else:
+            # surface is in pem
+            # direct candidates - means the surface form was directly in pem lookup
+            cands_main = self.pem[surface_form_norm]  
+            direct_cands = list(cands_main.items())
+            
+            if self.combine:
+                direct_cands = self.mgenre_title_mapping(surface_form,candidate_entities=cands_main,combine_two_mapping=True)
+ 
         # add short names to person_coref for all people candidates
         person_short_names = surface_form_norm.split(" ")
         short_name_cands = []
@@ -92,7 +131,8 @@ class CandidateGeneratorExactMatch(CandidateGenerator):
             )
         else:
             cands = direct_cands
-
+            
+            
         if sample_k_candidates is not None:
             popular_negatives = sample_k_candidates // 2  # half are popular
             random_negatives = max(
@@ -101,10 +141,14 @@ class CandidateGeneratorExactMatch(CandidateGenerator):
 
             assert gold_qcode is not None, "gold_qcode must be set when sample_k_candidate is set"
             # assuming it is already sorted TODO: check this
-            negative_cands = [cand for cand in cands[:30] if cand[0] != gold_qcode]
 
-            # only add the gold_cand to the sample_k if it is in the top-30 candidates
-            gold_cand = [cand for cand in cands[:30] if cand[0] == gold_qcode]
+            negative_cands = [cand for cand in cands[:sample_k_candidates] if cand[0] != gold_qcode]
+            # only add the gold_cand to the sample_k if it is in the top-k candidates
+            gold_cand = []
+            for cand in cands[:sample_k_candidates]: # (ReFinED's paper)
+                if cand[0] == gold_qcode:
+                    gold_cand = [cand]
+                    break
 
             # popular negatives
             sampled_cands = negative_cands[:popular_negatives]
@@ -115,10 +159,11 @@ class CandidateGeneratorExactMatch(CandidateGenerator):
                 k=min(random_negatives, len(negative_cands[popular_negatives:])),
             )
 
-            # gold candidate (will be added if it is present in the top-30 candidates)
+            # gold candidate (will be added if it is present in the top-30 candidates) (ReFinED's paper)
             cands = gold_cand + sampled_cands
 
-        return (cands + [("Q0", 0.0)] * max_cands)[:max_cands], person_coref_ref
+        cands = (cands + [("Q0", 0.0)] * max_cands)[:max_cands]
+        return cands, person_coref_ref
 
     def add_candidates_to_spans(
             self,

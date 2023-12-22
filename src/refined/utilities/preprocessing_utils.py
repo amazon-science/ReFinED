@@ -253,7 +253,6 @@ def convert_doc_to_tensors(
             )
         ]
 
-
 def collate_batch_elements_tns(
         batch_elements_tns: List[BatchElementTns], token_pad_value: int, ner_pad_value: int = IGNORE_INDEX
 ) -> BatchedElementsTns:

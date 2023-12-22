@@ -1,34 +1,35 @@
 from typing import Dict, Any
+from refined.training.train.training_args import parse_training_args
 
 s3_resource_bucket = "refined.public"
 s3_resource_prefix = "2022_oct/"
 s3_datasets_prefix = "2022_oct/datasets/"
 
-# TODO: add a class for resource s3_bucket, s3_key, local_filename, needed_for_inference
+model = 'bert-base-multilingual-cased'
 
 DATA_FILES_WIKIDATA = {
     "roberta_base_model": {
         "s3_bucket": s3_resource_bucket,
-        "s3_key": s3_resource_prefix + "wikidata_data/roberta-base/pytorch_model.bin",
-        "local_filename": "roberta-base/pytorch_model.bin",
+        "s3_key": s3_resource_prefix + f"wikidata_data/{model}/pytorch_model.bin",
+        "local_filename": f"{model}/pytorch_model.bin",
         "needed_for_inference": True
     },
     "roberta_base_model_config": {
         "s3_bucket": s3_resource_bucket,
-        "s3_key": s3_resource_prefix + "wikidata_data/roberta-base/config.json",
-        "local_filename": "roberta-base/config.json",
+        "s3_key": s3_resource_prefix + f"wikidata_data/{model}/config.json",
+        "local_filename": f"{model}/config.json",
         "needed_for_inference": True
     },
     "roberta_base_vocab": {
         "s3_bucket": s3_resource_bucket,
-        "s3_key": s3_resource_prefix + "wikidata_data/roberta-base/vocab.json",
-        "local_filename": "roberta-base/vocab.json",
+        "s3_key": s3_resource_prefix + f"wikidata_data/{model}/vocab.json",
+        "local_filename": f"{model}/vocab.json",
         "needed_for_inference": True
     },
     "roberta_base_tokenizer_merges": {
         "s3_bucket": s3_resource_bucket,
-        "s3_key": s3_resource_prefix + "wikidata_data/roberta-base/merges.txt",
-        "local_filename": "roberta-base/merges.txt",
+        "s3_key": s3_resource_prefix + f"wikidata_data/{model}/merges.txt",
+        "local_filename": f"{model}/merges.txt",
         "needed_for_inference": True
     },
     "wiki_pem": {
@@ -41,13 +42,13 @@ DATA_FILES_WIKIDATA = {
         "s3_bucket": s3_resource_bucket,
         "s3_key": s3_resource_prefix + "wikidata_data/class_to_label.json",
         "local_filename": "wikidata_data/class_to_label.json",
-        "needed_for_inference": True  # used for returning readable format
+        "needed_for_inference": True 
     },
     "human_qcodes": {
         "s3_bucket": s3_resource_bucket,
         "s3_key": s3_resource_prefix + "wikidata_data/human_qcodes.json",
-        "local_filename": "wikidata_data/human_qcodes.json",
-        "needed_for_inference": True  # used for person name co-reference
+        "local_filename": "wikidata_data/human_qcodes.json", # used for person name co-reference
+        "needed_for_inference": True 
     },
     "class_to_idx": {
         "s3_bucket": s3_resource_bucket,
@@ -63,17 +64,10 @@ DATA_FILES_WIKIDATA = {
     },
     "qcode_idx_to_class_idx": {
         "s3_bucket": s3_resource_bucket,
-        "s3_key": s3_resource_prefix + "wikidata_data/qcode_to_class_tns_33831487-200.np",
-        "local_filename": "wikidata_data/qcode_to_class_tns_33831487-200.np",  # TODO remove hard-coding size
+        "s3_key": s3_resource_prefix + "wikidata_data/qcode_to_class_tns_38520582-122.np",
+        "local_filename": "wikidata_data/qcode_to_class_tns_38520582-122.np",  
         "needed_for_inference": True
     },
-    # example change made for preprocess_all.py script
-    # "qcode_idx_to_class_idx": {
-    #     "s3_bucket": s3_resource_bucket,
-    #     "s3_key": s3_resource_prefix + "wikidata_data/qcode_to_class_tns_735901-7.np",
-    #     "local_filename": "wikidata_data/qcode_to_class_tns_735901-7.np",  # TODO remove hard-coding size
-    #     "needed_for_inference": True
-    # },
 
     "subclasses": {
         "s3_bucket": s3_resource_bucket,
@@ -109,32 +103,32 @@ DATA_FILES_WIKIDATA = {
 DATA_FILES_WIKIPEDIA = {
     "roberta_base_model": {
         "s3_bucket": s3_resource_bucket,
-        "s3_key": s3_resource_prefix + "wikipedia_data/roberta-base/pytorch_model.bin",
-        "local_filename": "roberta-base/pytorch_model.bin",
+        "s3_key": s3_resource_prefix + f"wikipedia_data/{model}/pytorch_model.bin",
+        "local_filename": f"{model}/pytorch_model.bin",
         "needed_for_inference": True
     },
     "roberta_base_model_config": {
         "s3_bucket": s3_resource_bucket,
-        "s3_key": s3_resource_prefix + "wikipedia_data/roberta-base/config.json",
-        "local_filename": "roberta-base/config.json",
+        "s3_key": s3_resource_prefix + f"wikipedia_data/{model}/config.json",
+        "local_filename": f"{model}/config.json",
         "needed_for_inference": True
     },
     "roberta_base_vocab": {
         "s3_bucket": s3_resource_bucket,
-        "s3_key": s3_resource_prefix + "wikipedia_data/roberta-base/vocab.json",
-        "local_filename": "roberta-base/vocab.json",
+        "s3_key": s3_resource_prefix + f"wikipedia_data/{model}/vocab.json",
+        "local_filename": f"{model}/vocab.json",
         "needed_for_inference": True
     },
     "roberta_base_tokenizer_merges": {
         "s3_bucket": s3_resource_bucket,
-        "s3_key": s3_resource_prefix + "wikipedia_data/roberta-base/merges.txt",
-        "local_filename": "roberta-base/merges.txt",
+        "s3_key": s3_resource_prefix + f"wikipedia_data/{model}/merges.txt",
+        "local_filename": f"{model}/merges.txt",
         "needed_for_inference": True
     },
     "wiki_pem": {
         "s3_bucket": s3_resource_bucket,
         "s3_key": s3_resource_prefix + "wikipedia_data/pem.lmdb",
-        "local_filename": "wikipedia_data/pem.lmdb",
+        "local_filename": "wikipedia_data/pem.lmdb", 
         "needed_for_inference": True
     },
     "class_to_label": {
@@ -163,8 +157,8 @@ DATA_FILES_WIKIPEDIA = {
     },
     "qcode_idx_to_class_idx": {
         "s3_bucket": s3_resource_bucket,
-        "s3_key": s3_resource_prefix + "wikipedia_data/qcode_to_class_tns_6269457-138.np",
-        "local_filename": "wikipedia_data/qcode_to_class_tns_6269457-138.np",
+        "s3_key": s3_resource_prefix + "wikipedia_data/qcode_to_class_tns_9050844-117.np",
+        "local_filename": "wikipedia_data/qcode_to_class_tns_9050844-117.np",
         "needed_for_inference": True
     },
     "subclasses": {

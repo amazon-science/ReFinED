@@ -25,8 +25,6 @@ def create_tensors(resources_dir: str, additional_entities: Optional[List[Additi
     chosen_classes: Set[str] = set(class_to_idx.keys())
 
     qcode_to_idx = load_qcode_to_idx(os.path.join(resources_dir, 'qcode_to_idx.json'))
-    # qcode_to_idx: Dict[str, int] = create_qcode_to_idx(os.path.join(resources_dir, 'wiki_pem.json'), is_test=is_test)
-    print('len(qcode_to_idx)', len(qcode_to_idx))
     subclasses, _ = load_subclasses(os.path.join(resources_dir, 'subclass_p279.json'), is_test=is_test)
     instance_of = load_instance_of(os.path.join(resources_dir, 'instance_of_p31.json'), is_test=is_test)
     occupations = load_occuptations(os.path.join(resources_dir, 'occupation_p106.json'), is_test=is_test)
@@ -39,7 +37,7 @@ def create_tensors(resources_dir: str, additional_entities: Optional[List[Additi
 
     # add entity types of additional entities
     if additional_entities is not None:
-        print('Adding entity types for additional entities')
+        LOG.info('Adding entity types for additional entities')
         for additional_entity in additional_entities:
             instance_of[additional_entity.entity_id] = set(additional_entity.entity_types)
 
@@ -57,7 +55,7 @@ def create_tensors(resources_dir: str, additional_entities: Optional[List[Additi
         #     break
 
     qcode_to_class_idx: torch.Tensor = torch.zeros(size=(len(qcode_to_idx) + 2, max_classes_ln + 2), dtype=torch.int16)
-    print(qcode_to_class_idx.shape)
+    LOG.info(qcode_to_class_idx.shape)
 
     # fill tensor
     has_class = 0
@@ -75,10 +73,10 @@ def create_tensors(resources_dir: str, additional_entities: Optional[List[Additi
         # if i > 100 and is_test:
         #     break
 
-    print(f'Has class: {has_class}, no class: {no_class}, {has_class / (has_class + no_class) * 100}%')
-    print('qcode_to_class_idx row 0-10', list(enumerate(qcode_to_class_idx[:10])))
-    print('qcode_to_idx row 0-10', list(enumerate(list(qcode_to_idx.items())[:10])))
-    print('class_to_idx row 0-10', list(enumerate(list(class_to_idx.items())[:10])))
+    LOG.info(f'Has class: {has_class}, no class: {no_class}, {has_class / (has_class + no_class) * 100}%')
+    LOG.info('qcode_to_class_idx row 0-10', list(enumerate(qcode_to_class_idx[:10])))
+    LOG.info('qcode_to_idx row 0-10', list(enumerate(list(qcode_to_idx.items())[:10])))
+    LOG.info('class_to_idx row 0-10', list(enumerate(list(class_to_idx.items())[:10])))
     torch.save(qcode_to_class_idx, f'{resources_dir}/qcode_to_class_tns.pt')
 
     qcode_to_class_np = np.memmap(f"{resources_dir}/qcode_to_class_tns_{qcode_to_class_idx.size(0)}-{qcode_to_class_idx.size(1)}.np",
@@ -88,9 +86,6 @@ def create_tensors(resources_dir: str, additional_entities: Optional[List[Additi
     qcode_to_class_np[:] = qcode_to_class_idx[:]
     qcode_to_class_np.flush()
 
-    # qcode_to_class_idx.numpy().tofile(f'{resources_dir}/qcode_to_class_tns.np')
-    # with open(f'{resources_dir}/qcode_to_idx.json', 'w') as f:
-    #     json.dump(qcode_to_idx, f)
     with open(f'{resources_dir}/class_to_idx.json', 'w') as f:
         json.dump(class_to_idx, f)
 
@@ -98,10 +93,10 @@ def create_tensors(resources_dir: str, additional_entities: Optional[List[Additi
 def create_qcode_to_idx(pem_file: str, is_test: bool) -> Dict[str, int]:
     all_qcodes = set()
     with open(pem_file, 'r') as f:
-        for i, line in tqdm(enumerate(f), total=10e+6, desc='create_qcode_to_idx'):
+        for file_line, line in tqdm(enumerate(f), desc='create_qcode_to_idx'):
             line = json.loads(line)
             all_qcodes.update(set(line['qcode_probs'].keys()))
-            if is_test and i > 100000:
+            if is_test and file_line > 100000:
                 break
     return {qcode: qcode_idx + 1 for qcode_idx, qcode in enumerate(list(all_qcodes))}
 

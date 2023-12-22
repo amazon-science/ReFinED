@@ -12,7 +12,7 @@ from tqdm.auto import tqdm
 from refined.inference.processor import Refined
 from refined.doc_preprocessing.wikidata_mapper import WikidataMapper
 from refined.utilities.general_utils import get_logger
-
+from refined.resource_management.loaders import normalize_surface_form
 LOG = get_logger(__name__)
 
 
@@ -25,18 +25,20 @@ def process_annotated_document(
         apply_class_check: bool = False,
         filter_nil: bool = False,  # filter_nil is False for our papers results as this is consistent with previous
         # work. But `filter_nil=False` unfairly penalises predicting new (or unlabelled) entities.
-        return_special_spans: bool = False  # only set to True if the dataset has special spans (e.g. dates)
+        return_special_spans: bool = False, # only set to True if the dataset has special spans (e.g. dates),
+        topk_eval: bool = False,
+        top_k: int = 0,
 ) -> Metrics:
     if force_prediction:
         assert ed_threshold == 0.0, "ed_threshold must be set to 0 to force predictions"
     gold_spans = set()
     gold_entity_in_cands = 0
-    for span in doc.spans:
+    for idx,span in enumerate(doc.spans):
         if (span.gold_entity is None or span.gold_entity.wikidata_entity_id is None
             # only include entity spans that have been annotated as an entity in a KB
                 or span.gold_entity.wikidata_entity_id == "Q0"):
             continue
-        gold_spans.add((span.text, span.start, span.gold_entity.wikidata_entity_id))
+        gold_spans.add((normalize_surface_form(span.text), span.start, span.gold_entity.wikidata_entity_id))
         if span.gold_entity.wikidata_entity_id in {qcode for qcode, _ in span.candidate_entities}:
             gold_entity_in_cands += 1
 
@@ -52,7 +54,7 @@ def process_annotated_document(
             # gold_entity id will be added to md_spans when md_spans overlaps withs spans in merge_spans() method
             if span.gold_entity is None or span.gold_entity.wikidata_entity_id is None:
                 nil_spans.add((span.text, span.start))
-
+    
     predicted_spans = refined.process_text(
         text=doc.text,
         spans=doc.spans if not el else None,
@@ -62,11 +64,8 @@ def process_annotated_document(
     )
 
     pred_spans = set()
+    pred_spans_topk = set()
     for span in predicted_spans:
-        # skip dates and numbers, only consider entities that are linked to a KB
-        # pred_spans is used for linkable mentions only
-        if span.coarse_type != "MENTION":
-            continue
         if (
                 span.predicted_entity.wikidata_entity_id is None
                 or span.entity_linking_model_confidence_score < ed_threshold
@@ -78,9 +77,17 @@ def process_annotated_document(
         if force_prediction and qcode == "Q0":
             if len(span.top_k_predicted_entities) >= 2:
                 qcode = span.top_k_predicted_entities[1][0].wikidata_entity_id
+        if len(span.top_k_predicted_entities)>1 and topk_eval:
+            max_len = min(top_k,len(span.top_k_predicted_entities))
+            for s in span.top_k_predicted_entities[1:max_len]:
+                qcode_top_k = s[0].wikidata_entity_id
+                pred_spans_topk.add((span.text, span.start, qcode_top_k))
         pred_spans.add((span.text, span.start, qcode))
+        if topk_eval:
+            pred_spans_topk.add((span.text, span.start, qcode))
 
-    pred_spans = {(text, start, qcode) for text, start, qcode in pred_spans if qcode != "Q0"}
+    pred_spans = {(normalize_surface_form(text), start, qcode) for text, start, qcode in pred_spans if qcode != "Q0"}
+    pred_spans_topk = {(normalize_surface_form(text), start, qcode) for text, start, qcode in pred_spans_topk if qcode != "Q0"}
     if filter_nil:
         # filters model predictions that align with NIL spans in the dataset. See above for more information.
         # Note that this `Doc.md_spans` must include spans with wikidata_entity_id set to None,
@@ -95,11 +102,21 @@ def process_annotated_document(
     tp = len(pred_spans & gold_spans)
     fp = len(pred_spans - gold_spans)
     fn = len(gold_spans - pred_spans)
-
+    
+    if topk_eval:
+        tp_k = len(pred_spans_topk & gold_spans)
+        fp_k = len(pred_spans_topk - gold_spans)
+        fn_k = len(gold_spans - pred_spans_topk)
+    else:
+        tp_k = 0
+        fp_k = 0
+        fn_k = 0
+    
     # ignore which entity is linked to (consider just the mention detection (NER) prediction)
-    pred_spans_md = {(span.text, span.start, span.coarse_type) for span in predicted_spans}
-    gold_spans_md = {(span.text, span.start, span.coarse_type) for span in doc.md_spans
-                     if return_special_spans or span.coarse_type == "MENTION"}
+    pred_spans_md = {(normalize_surface_form(span.text), span.start) for span in predicted_spans}
+    gold_spans_md = {(normalize_surface_form(span.text), span.start) for span in doc.md_spans}
+    
+    
     tp_md = len(pred_spans_md & gold_spans_md)
     fp_md = len(pred_spans_md - gold_spans_md)
     fn_md = len(gold_spans_md - pred_spans_md)
@@ -118,6 +135,9 @@ def process_annotated_document(
         tp_md=tp_md,
         fp_md=fp_md,
         fn_md=fn_md,
+        tp_k=tp_k,
+        fp_k=fp_k,
+        fn_k=fn_k,
         gold_entity_in_cand=gold_entity_in_cands,
         num_docs=1,
         example_errors=[{'doc_title': doc.text[:20], 'fp_errors': fp_errors, 'fn_errors': fn_errors}],
@@ -136,8 +156,13 @@ def evaluate_on_docs(
         el: bool = False,
         sample_size: Optional[int] = None,
         filter_nil_spans: bool = False,
-        return_special_spans: bool = False
+        return_special_spans: bool = False,
+        topk_eval: bool = False,
+        top_k: int = 10,
 ):
+    if topk_eval and top_k < 2: # for top-k evaluation, we need to set k at least 2 . For the case k==1, we will calculate it as the default evaluation. 
+        top_k = 2
+        
     overall_metrics = Metrics.zeros(el=el)
     for doc_idx, doc in tqdm(
             enumerate(list(docs)), disable=not progress_bar, desc=f"Evaluating on {dataset_name}"
@@ -150,7 +175,9 @@ def evaluate_on_docs(
             apply_class_check=apply_class_check,
             el=el,
             filter_nil=filter_nil_spans,
-            return_special_spans=return_special_spans
+            return_special_spans=return_special_spans,
+            topk_eval = topk_eval,
+            top_k = top_k
         )
         overall_metrics += doc_metrics
         if sample_size is not None and doc_idx > sample_size:

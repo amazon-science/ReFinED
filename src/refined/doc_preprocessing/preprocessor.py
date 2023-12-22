@@ -129,7 +129,7 @@ class PreprocessorInferenceOnly(Preprocessor):
             model_description_embeddings_file: Optional[str] = None,
             inference_only: bool = True,
             return_titles: bool = False,
-            max_seq: int = 510
+            max_seq: int = 510,
     ):
         """
         Constructs PreprocessorInferenceOnly object.
@@ -159,7 +159,7 @@ class PreprocessorInferenceOnly(Preprocessor):
             data_dir=data_dir,
             entity_set=entity_set,
             use_precomputed_description_embeddings=use_precomputed_description_embeddings,
-            return_titles=return_titles
+            return_titles=return_titles,
         )
         self.tokenizer = self.lookups.tokenizers
         self.qcode_to_idx = self.lookups.qcode_to_idx
@@ -321,7 +321,7 @@ class PreprocessorInferenceOnly(Preprocessor):
             use_precomputed_description_embeddings: bool = True,
             model_description_embeddings_file: Optional[str] = None,
             return_titles: bool = False,
-            max_candidates: Optional[int] = None
+            max_candidates: Optional[int] = None,
     ):
 
         if download_files:

@@ -16,7 +16,7 @@ import os
 
 class LookupsInferenceOnly:
 
-    def __init__(self, entity_set: str, data_dir: str, use_precomputed_description_embeddings: bool = True,
+    def __init__(self,entity_set: str, data_dir: str, use_precomputed_description_embeddings: bool = True,
                  return_titles: bool = False):
         self.entity_set = entity_set
         self.data_dir = data_dir
@@ -34,9 +34,10 @@ class LookupsInferenceOnly:
         # replace all get_file and download_if needed
         # always use resource names that are provided instead of relying on same data_dirs
         # shape = (num_ents, max_num_classes)
+        
         self.qcode_idx_to_class_idx = np.memmap(
-            resource_to_file_path["qcode_idx_to_class_idx"],
-            shape=get_mmap_shape(resource_to_file_path["qcode_idx_to_class_idx"]),
+            resource_to_file_path[f"qcode_idx_to_class_idx"],
+            shape=get_mmap_shape(resource_to_file_path[f"qcode_idx_to_class_idx"]),
             mode="r",
             dtype=np.int16,
         )
@@ -48,9 +49,8 @@ class LookupsInferenceOnly:
         else:
             # TODO: convert to numpy memmap to save space during training with multiple workers
             self.descriptions_tns = None
-
         self.pem: Mapping[str, List[Tuple[str, float]]] = LmdbImmutableDict(resource_to_file_path["wiki_pem"])
-
+        
         with open(resource_to_file_path["class_to_label"], "r") as f:
             self.class_to_label: Dict[str, Any] = json.load(f)
 

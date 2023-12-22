@@ -49,7 +49,9 @@ class WikipediaDataset(torch.utils.data.IterableDataset):
             add_main_entity: bool = True,
             rank: Optional[int] = None,  # used for DDP training (rank)
             size: Optional[int] = None,  # used for DDP training (world size)
-            return_docs: bool = False
+            return_docs: bool = False,
+            epoch: int = 2,
+            file_line_count: int = 20000000,
     ):
         """
         Constructs instance of Wikipedia dataset (should be used in conjunction with torch Dataloader).
@@ -78,7 +80,8 @@ class WikipediaDataset(torch.utils.data.IterableDataset):
         self.wikidata_mapper = wikidata_mapper
         self.add_main_entity = add_main_entity
         self.lower_case_prob = lower_case_prob
-        self.file_line_count = 6000000  # hard-coded for now to avoid running wc -l on a 50 GB file
+        self.epoch = epoch
+        self.file_line_count = file_line_count  # We approximate file sizes from the step 8 in the preprocessing step or using this command `subprocess.check_output(['wc', '-l', 'PATH_OF_TRAINING_DATA/datasets/wikipedia_links_aligned.json'])`
 
         if end is None:
             end = self.file_line_count
@@ -209,7 +212,7 @@ class WikipediaDataset(torch.utils.data.IterableDataset):
                             del batch_tns
                         del batch_elements, doc_batch_elements
                         batch_elements = []
-
+                    
             if len(batch_elements) > 0:
                 for batch_tns in convert_batch_elements_to_batched_tns(
                         batch_elements,
@@ -221,8 +224,8 @@ class WikipediaDataset(torch.utils.data.IterableDataset):
 
     def __len__(self):
         # approximation of dataset size
-        return self.file_line_count * 2 // self.batch_size
-
+        return self.file_line_count * self.epoch // self.batch_size 
+ 
     def merge_in_main_entity_mentions(
             self, title: str, spans: List[Span], md_spans: List[Span]
     ) -> List[Span]:

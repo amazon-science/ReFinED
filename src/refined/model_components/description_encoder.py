@@ -8,13 +8,12 @@ from transformers import PreTrainedModel
 
 from refined.doc_preprocessing.preprocessor import Preprocessor
 
-
 class DescriptionEncoder(nn.Module):
     def __init__(
         self,
         preprocessor: Preprocessor,
         n_layer: int = 2,
-        transformer_name: str = "roberta-base",
+        transformer_name: str = "bert-base-multilingual-cased",
         output_dim: int = 300,
         dropout: float = 0.1,
         seq_len: int = 32,

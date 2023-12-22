@@ -36,6 +36,7 @@ class RefinedModel(nn.Module):
             use_precomputed_descriptions: bool = False,
             ignore_descriptions: bool = False,
             ignore_types: bool = False,
+            temperature_scaling: float = 0.02,
     ):
         """
         Constructs model for NER and ED.
@@ -87,7 +88,7 @@ class RefinedModel(nn.Module):
         # restores common weights for description encoder layers
         # description bi encoder
         self.ed_2: nn.Module = EDLayer(
-            mention_dim=self.transformer_config.hidden_size, preprocessor=preprocessor
+            mention_dim=self.transformer_config.hidden_size, preprocessor=preprocessor, temperature_scaling=temperature_scaling
         )
 
         # restore common weights for context encoder layers
@@ -259,7 +260,7 @@ class RefinedModel(nn.Module):
                 cand_desc_emb,
             ) = candidate_tensors
             candidate_entity_targets = batch.candidate_target_values
-        else:
+        else: 
             # token_acc_sums, entity_mask, entity_spans, other_spans, candidate_tensors
             token_acc_sums = batch.token_acc_sum_values
             entity_mask = batch.entity_mask_values
@@ -272,6 +273,7 @@ class RefinedModel(nn.Module):
                 batch.candidate_desc,
                 batch.candidate_desc_emb,
             )
+
             expanded_args = self._expand_tensors(
                 expandable_args, index_tensor=batch.entity_index_mask_values
             )
@@ -294,6 +296,7 @@ class RefinedModel(nn.Module):
             # TODO: may want to change this in the future so special spans can be provided
             entity_spans = [span for b in batch_elements for span in b.spans]
             other_spans = {}
+            
 
         class_targets = self._expand_class_targets(
             batch.class_target_values, index_tensor=batch.entity_index_mask_values
@@ -427,11 +430,7 @@ class RefinedModel(nn.Module):
                     coarse_mention_type=coarse_type if coarse_type != 'MENTION' else None,
                     doc_id=batch_elem.doc_id
                 )
-                if coarse_type == "MENTION":
-                    spans_for_batch.append(span)
-                else:
-                    # Other spans (e.g. "DATE" spans)
-                    special_type_spans_for_batch[coarse_type].append(span)
+                spans_for_batch.append(span)   
 
             spans_for_batch.sort(key=lambda x: x.start)
             for type_spans in special_type_spans_for_batch.values():
@@ -571,6 +570,7 @@ class RefinedModel(nn.Module):
     ) -> Optional[Tensor]:
         if class_targets is None or index_tensor is None:
             return None
+        
         class_targets = class_targets[index_tensor]
         num_ents = class_targets.size(0)
         device = class_targets.device

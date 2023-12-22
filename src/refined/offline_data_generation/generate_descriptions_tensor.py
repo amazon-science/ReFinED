@@ -8,18 +8,20 @@ from transformers import AutoTokenizer
 from refined.offline_data_generation.dataclasses_for_preprocessing import AdditionalEntity
 from refined.resource_management.loaders import load_labels, load_wikipedia_to_qcode, load_descriptions, \
     load_qcode_to_idx
-
+from refined.training.train.training_args import parse_training_args
+training_args = parse_training_args()
 
 # TODO FIX THIS SO IT USES CORRECT QCODE_TO_IDX
 def create_description_tensor(output_path: str, qcode_to_idx_filename: str, desc_filename: str, label_filename: str,
-                              wiki_to_qcode: str, tokeniser: str = 'roberta-base', is_test: bool = False,
+                              wiki_to_qcode: str, tokeniser: str = 'bert-base-multilingual-cased', is_test: bool = False,
                               include_no_desc: bool = True, keep_all_entities: bool = False,
                               additional_entities: Optional[List[AdditionalEntity]] = None):
     qcodes = {qcode for qcode in load_wikipedia_to_qcode(wiki_to_qcode).values()}
     labels = load_labels(label_filename, qcodes=qcodes, keep_all_entities=keep_all_entities, is_test=is_test)
     descriptions = load_descriptions(desc_filename, qcodes=qcodes, keep_all_entities=keep_all_entities, is_test=is_test)
     qcode_to_idx = load_qcode_to_idx(qcode_to_idx_filename)
-
+    tokeniser = training_args.transformer_name
+    
     if additional_entities is not None:
         print('Adding labels and descriptions from additional_entities')
         for additional_entity in additional_entities:

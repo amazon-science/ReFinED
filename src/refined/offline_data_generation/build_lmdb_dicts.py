@@ -18,7 +18,7 @@ def build_lmdb_dicts(preprocess_all_data_dir: str, keep_all_entities: bool):
     # nest the output in the preprocess_all_data_dir data_dir
     # wikipedia or wikidata
 
-    new_data_dir = os.path.join(preprocess_all_data_dir, "organised_data_dir")
+    new_data_dir = os.path.join(preprocess_all_data_dir, "data_combine_all_languages")
     os.makedirs(new_data_dir, exist_ok=True)
 
     entity_set = "wikidata" if keep_all_entities else "wikipedia"
@@ -38,7 +38,6 @@ def build_lmdb_dicts(preprocess_all_data_dir: str, keep_all_entities: bool):
     data_files = resource_manager.get_data_files()
     training_data_files = resource_manager.get_training_data_files()
     additional_data_files = resource_manager.get_additional_data_files()
-
     # TODO what about "roberta_base_tokenizer_merges"
 
     # data files
@@ -80,21 +79,6 @@ def build_lmdb_dicts(preprocess_all_data_dir: str, keep_all_entities: bool):
     LmdbImmutableDict.from_dict(wiki_to_qcode, output_file_path=additional_data_files["wiki_to_qcode"])
     qcode_to_label = load_labels(os.path.join(preprocess_all_data_dir, 'qcode_to_label.json'))
     LmdbImmutableDict.from_dict(qcode_to_label, output_file_path=additional_data_files["qcode_to_label"])
-
-    # add other expected files in the data_dir
-    for resource_name, data_file in resource_manager.get_data_files_info().items():
-        if resource_name in {
-            "roberta_base_model",
-            "roberta_base_model_config",
-            "roberta_base_vocab",
-            "roberta_base_tokenizer_merges",
-            "nltk_sentence_splitter_english",
-        }:
-            resource_manager.s3_manager.download_file_if_needed(
-                s3_bucket=data_file["s3_bucket"],
-                s3_key=data_file["s3_key"],
-                output_file_path=data_file["local_filename"],
-            )
 
     print(f"Data is now contained in {preprocess_all_data_dir}/organised_data_dir/ which can be used by the "
           f"`PreprocessorInferenceOnly` class and `ResourceManager` class")

@@ -110,7 +110,7 @@ def build_pem_lookup(aligned_wiki_file: str, output_dir: str, resources_dir: str
                     surface_form_to_link_counts[surface_form][qcode] += 1
     with open(aligned_wiki_file, 'r') as f:
         num_pages = 0
-        for line in tqdm(f, total=6e+6, desc='Adding links'):
+        for line in tqdm(f, desc='Adding links'):
             line = json.loads(line)
             num_pages += 1
             for ent in line['hyperlinks_clean']:

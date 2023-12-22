@@ -17,6 +17,7 @@ class EDLayer(nn.Module):
         hidden_dim=1000,
         dropout=0.1,
         add_hidden=False,
+        temperature_scaling=0.02
     ):
         super().__init__()
         self.dropout = nn.Dropout(dropout)
@@ -30,6 +31,7 @@ class EDLayer(nn.Module):
             output_dim=output_dim, ff_chunk_size=4, preprocessor=preprocessor
         )
         self.add_hidden = add_hidden
+        self.temperature_scaling= temperature_scaling
 
     def get_parameters_to_scale(self) -> List[nn.Parameter]:
         """
@@ -65,25 +67,31 @@ class EDLayer(nn.Module):
         candidate_entity_targets: Optional[Tensor] = None,
         candidate_desc_emb: Optional[Tensor] = None,
     ):
+        
         if self.add_hidden:
             mention_embeddings = self.mention_projection(
                 self.dropout(F.relu(self.hidden_layer(mention_embeddings)))
             )
         else:
             mention_embeddings = self.mention_projection(mention_embeddings)
-
+        
+        
         if candidate_desc_emb is None:
             candidate_entity_embeddings = self.description_encoder(
                 candidate_desc
             )  # (num_ents, num_cands, output_dim)
         else:
             candidate_entity_embeddings = candidate_desc_emb  # (num_ents, num_cands, output_dim)
-
+    
+        if self.temperature_scaling != 1: # common cosine similarity doesn't need normalization
+            candidate_entity_embeddings = F.normalize(candidate_entity_embeddings, p=2, dim=2)
+            mention_embeddings = F.normalize(mention_embeddings, p=2, dim=1)
+        
         scores = (candidate_entity_embeddings @ mention_embeddings.unsqueeze(-1)).squeeze(
             -1
-        )  # dot product
-        # scores.shape = (num_ents, num_cands)
-
+        )
+        scores = scores/self.temperature_scaling
+          
         # mask out pad candidates (and candidates without descriptions) before calculating loss
         # multiplying by 0 kills the gradients, loss should also ignore it
         mask_value = -100  # very large number may have been overflowing cause -inf loss

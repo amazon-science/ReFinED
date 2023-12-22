@@ -52,8 +52,6 @@ class BatchElementTns(NamedTuple):
         Tensor
     ] = None  # shape = (ent_len, max_candidates, 32)  32 = description token length
     candidate_desc_emb: Optional[Tensor] = None  # shape = (ent_len, max_candidates, 300)
-    # description embedding (precomputed)
-
 
 class BatchedElementsTns(NamedTuple):
     """
@@ -248,6 +246,6 @@ class BatchElement:
 class ReFinEDConfig:
     ner_tag_to_ix: Dict[str, int] = field(default_factory=dict)
     data_dir: Optional[str] = None
-    transformer_name: str = 'roberta-base'
+    transformer_name: str = 'bert-base-multilingual-cased'
     max_candidates: int = 30
     debug: bool = False

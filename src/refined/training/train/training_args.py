@@ -23,10 +23,11 @@ class TrainingArgs:
     # it will train entity disambiguation (ED) and entity typing (ET)
     ed_dropout: float = 0.05
     et_dropout: float = 0.10
+    temperature_scaling: float = 0.02
     gradient_accumulation_steps: int = 1
     epochs: int = 2
     lr: float = 5e-5
-    batch_size: int = 8  # 8 uses around 12 GB, 16 uses 22 GB (can save space if find GPU process allocating)
+    batch_size: int = 32  # 64 uses around 40 GB++, 32 uses 22 GB
     ed_threshold: float = 0.15
     num_warmup_steps: int = 10
     num_candidates_train: int = 30
@@ -36,17 +37,20 @@ class TrainingArgs:
     restore_model_path: Optional[str] = None
     # This can be either 'wikipedia' or 'wikidata'. It is the entity set that model is considering when performing
     # entity linking.
-    entity_set: str = 'wikipedia'
+    entity_set: str = 'wikidata'
+        
+    languages: str = 'ar_de_en_es_fa_sr_ta_tr_fr_it'
+    number_of_language: int = 11
 
-    data_dir: str = os.path.join(os.path.expanduser('~'), '.cache', 'refined')
+    data_dir: str = 'data' 
     debug: bool = False
-    transformer_name: str = "roberta-base"
-    n_gpu: int = 1
+    transformer_name: str = "bert-base-multilingual-cased" 
+    n_gpu: int = 8
     mask_prob: float = 0.70
     mask_random_prob: float = 0.05
     candidate_dropout: float = 0.0
     max_mentions: int = 25
-    download_files: bool = True
+    download_files: bool = False
     checkpoint_every_n_steps: int = 2000
     resume: bool = False  # Resume training with same optimizer, scheduler, scaler (useful if previously crashed).
 
@@ -60,7 +64,7 @@ class TrainingArgs:
             # check input value
             self.checkpoint_metric = self.checkpoint_metric.lower()
             assert self.checkpoint_metric in {"el", "ed"}, "--checkpoint_metric must be 'el' or 'ed'."
-        self.batch_size = self.batch_size * self.n_gpu
+        
 
     def post_add_command_line_args(self):
         self.__post_init__()
@@ -88,6 +92,13 @@ class TrainingArgs:
 def parse_training_args() -> TrainingArgs:
     training_args = TrainingArgs()
     parser = ArgumentParser("This script is used to train the model for end-to-end EL or ED.")
+    parser.add_argument(
+        "--languages",
+        default=training_args.languages,
+        type=str,
+        required=False,
+        help="Languages that you want to train a model, e.g., en_es_de",
+    )
     parser.add_argument(
         "--experiment_name",
         default=training_args.experiment_name,
@@ -143,6 +154,12 @@ def parse_training_args() -> TrainingArgs:
         default=training_args.lr,
         type=float,
         help="Learning rate",
+    )
+    parser.add_argument(
+        "--temperature_scaling",
+        default=training_args.temperature_scaling,
+        type=float,
+        help="temperature_scaling",
     )
     parser.add_argument(
         "--ed_dropout",

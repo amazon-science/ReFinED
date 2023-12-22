@@ -129,70 +129,68 @@ def select_classes(resources_dir: str, add_class_every_n_pages: int = 5000, numb
                                   qcode_idx_to_class_idx=None,  # TODO check it is fine to use None
                                   index_to_class=None)
     chosen_classes = set()
+    non_zero_value = 5e-6 # to prevent divide by zero
+
     # add class
     chosen_classes.add('Q16889133')
 
     chosen_classes.update(download_common_wikidata_classes())
-    while len(chosen_classes) < number_of_classes:
-        with open(os.path.join(resources_dir, 'wikipedia_links_aligned.json'), 'r') as f:
-            good_class_all = []
-            i = 0
-            separated = 0
-            num_ents = 0
-            tp_p = 0
-            fp_p = 0
+    
+    with open(os.path.join(resources_dir, 'wikipedia_links_aligned.json'), 'r') as f: 
+        good_class_all = []
+        line_count = 0
+        separated = 0
+        num_ents = 0
+        true_positive = 0
+        false_positive = 0
 
-            for line in tqdm(f, desc='Processing pages to select optimal classes for entity disambiguation'):
-                i += 1
-                if (i + 1) % add_class_every_n_pages == 0 and len(good_class_all) == 0:
-                    tqdm.write(f"Ran out of 'useful' classes to select. So using number the {len(chosen_classes)} "
-                               f"chosen classes. Note that this is not expected to happen. It likely indicates "
-                               f"that the Wikidata dump or Wikipedia was dump was not downloaded and parsed "
-                               f"correctly. ")
-                    os.rename(os.path.join(resources_dir, 'chosen_classes.txt.part'),
-                              os.path.join(resources_dir, 'chosen_classes.txt'))
-                    return
+        for line in tqdm(f, desc='Processing pages to select optimal classes for entity disambiguation'):
+            line_count += 1
+            if len(chosen_classes) > number_of_classes:
+                os.rename(os.path.join(resources_dir, 'chosen_classes.txt.part'),
+                          os.path.join(resources_dir, 'chosen_classes.txt'))
+                return
+            if (line_count + 1) % (add_class_every_n_pages * 1) == 0 and len(good_class_all) > 0:
+                pop_precision = true_positive / (true_positive + false_positive + non_zero_value) * 100
+                s_rate = separated / (num_ents + non_zero_value) * 100
+                tqdm.write(f'Popularity precision {pop_precision}, No Popularity precision: {s_rate}')
+                with open(os.path.join(resources_dir, 'chosen_classes.txt.part'), 'w') as f_out:
+                    f_out.write('\n'.join([x for x in chosen_classes]))
 
-                if (i + 1) % (add_class_every_n_pages * 1) == 0 and len(good_class_all) > 0:
-                    pop_precision = tp_p / (tp_p + fp_p + 5e-6) * 100
-                    s_rate = separated / (num_ents + 1e-6) * 100
-                    tqdm.write(f'Popularity precision {pop_precision}, No Popularity precision: {s_rate}')
-                    with open(os.path.join(resources_dir, 'chosen_classes.txt.part'), 'w') as f_out:
-                        f_out.write('\n'.join([x for x in chosen_classes]))
+            if (line_count + 1) % add_class_every_n_pages == 0 and len(good_class_all) > 0:
+                chosen_qcode = Counter(good_class_all).most_common(1)[0][0]
+                chosen_qcode_freq = Counter(good_class_all).most_common(1)[0][1]
+                tqdm.write(f'Chosen class {chosen_qcode}, number of entities disambiguated with hit '
+                           f'{chosen_qcode_freq}/{num_ents}, number of chosen classes {len(chosen_classes)}')
+                chosen_classes.add(chosen_qcode)
+                good_class_all = []
+                separated = 0
+                num_ents = 0
+                true_positive = 0
+                false_positive = 0
 
-                if (i + 1) % add_class_every_n_pages == 0 and len(good_class_all) > 0:
-                    chosen_qcode = Counter(good_class_all).most_common(1)[0][0]
-                    chosen_qcode_freq = Counter(good_class_all).most_common(1)[0][1]
-                    tqdm.write(f'Chosen class {chosen_qcode}, number of entities disambiguated with hit '
-                               f'{chosen_qcode_freq}/{num_ents}, number of chosen classes {len(chosen_classes)}')
-                    chosen_classes.add(chosen_qcode)
-                    good_class_all = []
-                    separated = 0
-                    num_ents = 0
-                    tp_p = 0
-                    fp_p = 0
+            line = json.loads(line)
+            for ent in line['hyperlinks_clean']:
+                good_classes, already_sep, conflicting_qcodes = ent_good_classes(ent, already_chosen=chosen_classes,
+                                                                                 pem=pem,
+                                                                                 occupations=occupations,
+                                                                                 instance_of=instance_of,
+                                                                                 country=country,
+                                                                                 sports=sports,
+                                                                                 class_explorer=class_explorer,
+                                                                                 subclasses=subclasses)
+                num_ents += 1
+                if already_sep:
+                    separated += 1
+                good_class_all.extend(good_classes)
 
-                line = json.loads(line)
-                for ent in line['hyperlinks_clean']:
-                    good_classes, already_sep, conflicting_qcodes = ent_good_classes(ent, already_chosen=chosen_classes,
-                                                                                     pem=pem,
-                                                                                     occupations=occupations,
-                                                                                     instance_of=instance_of,
-                                                                                     country=country,
-                                                                                     sports=sports,
-                                                                                     class_explorer=class_explorer,
-                                                                                     subclasses=subclasses)
-                    num_ents += 1
-                    if already_sep:
-                        separated += 1
-                    good_class_all.extend(good_classes)
-
-                    gold_qcode = ent['qcode']
-                    cands = list(get_candidates(pem, ent['surface_form']).items())[:10]
-                    cands = [x[0] for x in cands if x[0] in conflicting_qcodes]
-                    if len(cands) > 0 and cands[0] == gold_qcode:
-                        tp_p += 1
-                    else:
-                        fp_p += 1
+                gold_qcode = ent['qcode']
+                cands = list(get_candidates(pem, ent['surface_form']).items())[:10]
+                cands = [x[0] for x in cands if x[0] in conflicting_qcodes]
+                if len(cands) > 0 and cands[0] == gold_qcode:
+                    true_positive += 1
+                else:
+                    false_positive += 1
+    
     os.rename(os.path.join(resources_dir, 'chosen_classes.txt.part'),
               os.path.join(resources_dir, 'chosen_classes.txt'))

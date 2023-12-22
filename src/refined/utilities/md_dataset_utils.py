@@ -134,7 +134,7 @@ no_prefix_space_tokens = {
 
 
 def bio_to_offset_pairs(bio_preds, use_labels: bool = False):
-
+    
     offset_pairs = []
     in_ent = False
     current_start = None
@@ -189,4 +189,5 @@ def bio_to_offset_pairs(bio_preds, use_labels: bool = False):
             offset_pairs.append((current_start, len(bio_preds), ent_type))
         else:
             offset_pairs.append((current_start, len(bio_preds)))
+
     return set(offset_pairs)

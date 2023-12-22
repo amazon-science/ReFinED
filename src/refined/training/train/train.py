@@ -20,6 +20,7 @@ from refined.torch_overrides.data_parallel_refined import DataParallelReFinED
 from refined.training.fine_tune.fine_tune import run_fine_tuning_loops
 from refined.training.train.training_args import parse_training_args
 from refined.utilities.general_utils import get_logger
+from refined.resource_management.lmdb_wrapper import LmdbImmutableDict
 
 LOG = get_logger(name=__name__)
 
@@ -27,9 +28,10 @@ LOG = get_logger(name=__name__)
 def main():
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-    # DDP (ensure batch_elements_included is used)
-
     training_args = parse_training_args()
+    
+    
+    languages = training_args.languages.split('_')
 
     resource_manager = ResourceManager(S3Manager(),
                                        data_dir=training_args.data_dir,
@@ -38,10 +40,6 @@ def main():
                                        load_descriptions_tns=True,
                                        model_name=None
                                        )
-    if training_args.download_files:
-        resource_manager.download_data_if_needed()
-        resource_manager.download_additional_files_if_needed()
-        resource_manager.download_training_files_if_needed()
 
     preprocessor = PreprocessorInferenceOnly(
         data_dir=training_args.data_dir,
@@ -52,29 +50,32 @@ def main():
         entity_set=training_args.entity_set,
         use_precomputed_description_embeddings=False
     )
-
+    
+    mention2wikidataID = LmdbImmutableDict(f'{training_args.data_dir}/additional_data/mention2wikidataID.lmdb')
+    preprocessor.candidate_generator.mention2wikidataID = mention2wikidataID # loading mGENRE's candidate generation to mReFinED
+    
     wikidata_mapper = WikidataMapper(resource_manager=resource_manager)
 
     wikipedia_dataset_file_path = resource_manager.get_training_data_files()['wikipedia_training_dataset']
     training_dataset = WikipediaDataset(
-        # start=100,
-        start=100,
+        start=100*len(languages), # first 100*#language are used for eval
         end=100000000,  # large number means every line will be read until the end of the file
         preprocessor=preprocessor,
         resource_manager=resource_manager,
         wikidata_mapper=wikidata_mapper,
         dataset_path=wikipedia_dataset_file_path,
         batch_size=training_args.batch_size,
-        num_workers=8 * training_args.n_gpu,
+        num_workers=8 * training_args.n_gpu, # ReFinED's paper value
         prefetch=100,  # add random number for each worker and have more than 2 workers to remove waiting
         mask=training_args.mask_prob,
         random_mask=training_args.mask_random_prob,
-        lower_case_prob=0.05,
+        lower_case_prob=0.05, # ReFinED's paper value
         candidate_dropout=training_args.candidate_dropout,
         max_mentions=training_args.max_mentions,
-        sample_k_candidates=5,
+        sample_k_candidates=training_args.num_candidates_train,  
         add_main_entity=True
     )
+
     training_dataloader = DataLoader(dataset=training_dataset, batch_size=None, num_workers=8 * training_args.n_gpu,
                                      # pin_memory=True if training_args.n_gpu == 1 else False,
                                      pin_memory=True,  # may break ddp and dp training
@@ -83,7 +84,7 @@ def main():
                                      )
     eval_docs: List[Doc] = list(iter(WikipediaDataset(
         start=0,
-        end=100,  # first 100 docs are used for eval
+        end=100*len(languages),  # 100 docs/language are used for eval
         preprocessor=preprocessor,
         resource_manager=resource_manager,
         wikidata_mapper=wikidata_mapper,
@@ -105,8 +106,11 @@ def main():
                     transformer_name=preprocessor.transformer_name,
                     ner_tag_to_ix=preprocessor.ner_tag_to_ix
                     ),
-        preprocessor=preprocessor
+        preprocessor=preprocessor,
+        temperature_scaling=training_args.temperature_scaling
     )
+    
+    
 
     if training_args.restore_model_path is not None:
         # TODO load `ModelConfig` file (from the directory) and initialise RefinedModel from that

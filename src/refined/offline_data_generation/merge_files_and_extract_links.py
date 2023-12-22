@@ -4,7 +4,8 @@ import os
 import re
 from typing import Set
 from urllib.parse import unquote
-from random import shuffle
+import random 
+import copy as cp
 
 from tqdm import tqdm
 
@@ -88,7 +89,7 @@ def process_line(line, redirects, wikipedia_to_qcode, instance_of, wikimedia_int
     return line
 
 
-def merge_files_and_extract_links(input_dir: str, resources_dir: str, output_dir: str):
+def merge_files_and_extract_links(languages, input_dir: str, resources_dir: str, output_dir: str, evaluation_doc_per_lan: int = 100, random_seed: int = 4):
     redirects = load_redirects(os.path.join(resources_dir, 'redirects.json'))
     instance_of = load_instance_of(os.path.join(resources_dir, 'instance_of_p31.json'))
     title_to_qcode = load_wikipedia_to_qcode(os.path.join(resources_dir, 'enwiki.json'))
@@ -98,22 +99,62 @@ def merge_files_and_extract_links(input_dir: str, resources_dir: str, output_dir
 
     # list, surnames, redirects, and disambiguation (+ name disambiguation)
     deny_classes = DENY_CLASSES
-
+    print("creating wikipedia_links_aligned.json")
+    
     processed_clean_wiki_file = open(os.path.join(output_dir, 'wikipedia_links_aligned.json'), 'w')
-    pbar = tqdm(total=6e+6)
-    for base_path, _, file_names in os.walk(input_dir):
-        shuffle(file_names)
-        for file_name in file_names:
-            with open(os.path.join(base_path, file_name), 'r') as f:
-                for line in f:
-                    line = json.loads(line)
+
+    if len(languages) > 1:
+        original_path = cp.deepcopy(input_dir)
+        all_files_training = {}
+        for lang in languages:
+            input_dir = original_path.replace(output_dir,f"{output_dir}/{lang}")
+            if lang not in all_files_training:
+                all_files_training[lang] = []
+            for base_path, _, file_names in os.walk(input_dir):
+                for file_name in file_names:
+                    all_files_training[lang].append(os.path.join(base_path, file_name))
+
+        all_readers = {}
+        for lang in languages:
+            all_readers[lang] = {}
+            all_readers[lang]['files'] = open(all_files_training[lang].pop()).readlines()
+            all_readers[lang]['end'] = len(all_readers[lang]['files'])
+            all_readers[lang]['now'] = 0
+
+
+        lang_status_check = set()
+        while len(lang_status_check) < len(languages):
+            for lang in languages[:]:
+                if all_readers[lang]['now'] >= all_readers[lang]['end']:
+                    if len(all_files_training[lang]) > 0:
+                        all_readers[lang]['files'] = open(all_files_training[lang].pop()).readlines()
+                        all_readers[lang]['end'] = len(all_readers[lang]['files'])
+                        all_readers[lang]['now'] = 0
+                    else:
+                        lang_status_check.add(lang)
+                else:        
+                    now_index = all_readers[lang]['now']
+                    line = json.loads(all_readers[lang]['files'][now_index])
                     line = process_line(line,
                                         redirects=redirects, wikipedia_to_qcode=title_to_qcode,
                                         instance_of=instance_of, wikimedia_internal_classes=deny_classes,
                                         disambiguation_qcodes=disambiguation_qcodes)
                     processed_clean_wiki_file.write(json.dumps(line) + '\n')
-                    pbar.update(1)
-
+                    all_readers[lang]['now']+=1
+              
+    else:
+        for lang in languages:
+            for base_path, _, file_names in os.walk(input_dir):
+                random.Random(random_seed).shuffle(file_names)
+                for file_name in file_names:
+                    with open(os.path.join(base_path, file_name), 'r') as wikifile:
+                        for line in wikifile:
+                            line = json.loads(line)
+                            line = process_line(line,
+                                                redirects=redirects, wikipedia_to_qcode=title_to_qcode,
+                                                instance_of=instance_of, wikimedia_internal_classes=deny_classes,
+                                                disambiguation_qcodes=disambiguation_qcodes)
+                            processed_clean_wiki_file.write(json.dumps(line) + '\n')
 
 if __name__ == '__main__':
     main()

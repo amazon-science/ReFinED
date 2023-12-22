@@ -24,7 +24,6 @@ NER_TAG_TO_IX = {
     "I-MENTION": 16
 }
 
-
 @dataclass
 class ModelConfig:
     data_dir: str

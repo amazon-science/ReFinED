@@ -51,7 +51,7 @@ class Refined(object):
             inference_only: bool = True,
             return_titles: bool = False,
             preprocessor: Optional[Preprocessor] = None,
-            max_candidates: int = 30
+            max_candidates: int = 30,
     ):
         """
         Constructs instance of Refined class.
@@ -68,6 +68,7 @@ class Refined(object):
                                otherwise will build person co-reference dictionary sequentially so only forward coref
                                occurs.
         """
+
         self.model_file = model_file_or_model
         self.max_seq = max_seq
         if preprocessor is None:
@@ -84,7 +85,7 @@ class Refined(object):
                 download_files=download_files,
                 inference_only=inference_only,
                 return_titles=return_titles,
-                max_candidates=max_candidates
+                max_candidates=max_candidates,
             )
         else:
             self.preprocessor = preprocessor
@@ -458,7 +459,7 @@ class Refined(object):
             device: Optional[str] = None,
             use_precomputed_descriptions: bool = True,
             download_files: bool = True,
-            return_titles: bool = True
+            return_titles: bool = True,
     ):
         """
         Load a pretrained ReFinED model.
@@ -482,9 +483,6 @@ class Refined(object):
                                                load_descriptions_tns=not use_precomputed_descriptions,
                                                load_qcode_to_title=return_titles
                                                )
-            # Download the model files
-            if download_files:
-                resource_manager.download_models_if_needed()
             model_files = resource_manager.get_model_files()
         else:
             # model_name refers to the file path of a custom trained/fine-tuned ReFinED model
@@ -516,7 +514,7 @@ class Refined(object):
             use_precomputed_descriptions=use_precomputed_descriptions,
             debug=debug,
             download_files=download_files,
-            return_titles=return_titles
+            return_titles=return_titles,
         )
 
     def precompute_description_embeddings(self, output_dir: Optional[str] = None):

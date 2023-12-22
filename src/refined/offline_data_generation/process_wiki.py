@@ -5,11 +5,12 @@ import re
 import json
 from typing import Dict
 from types import SimpleNamespace
+import copy as cp
 
 from tqdm import tqdm
 
 
-def build_redirects(args=None):
+def build_redirects(languages, args=None):
     if args is None:
         parser = argparse.ArgumentParser(description='Build lookup dictionaries from Wikipedia dumps.')
         parser.add_argument(
@@ -51,66 +52,127 @@ def build_redirects(args=None):
                          f"--overwrite_output_dir to overwrite.")
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
-
-    if os.path.exists(os.path.join(args.output_dir, 'redirects.json')):
-        return
-    page_id_to_title: Dict[str, str] = generate_wiki_id_to_title(args.page_sql_gz_filepath, args.output_dir)
-    generate_redirects(args.redirect_sql_gz_filepath, args.output_dir, page_id_to_title)
+    page_id_to_title: Dict[str, str] = generate_wiki_id_to_title(languages, args.page_sql_gz_filepath, args.output_dir)
+    generate_redirects(languages, args.redirect_sql_gz_filepath, args.output_dir, page_id_to_title)
 
 
-def generate_wiki_id_to_title(page_sql_gz_filepath: str, output_dir: str) -> Dict[str, str]:
+def generate_wiki_id_to_title(languages, page_sql_gz_filepath: str, output_dir: str) -> Dict[str, str]:
     # page_id, namespace, title, restrictions, redirect, new, random, touched, links, latest, len, content_model, lang
     page_id_to_title: Dict[str, str] = dict()
-    pattern = re.compile("([0-9]+),([0-9]+),(.+),(.+),([0-9]+),([0-9]+),(.+),(.+),(.+),([0-9]+),([0-9]+),(.+),(.+)")
+    pattern = re.compile("([0-9]+),([0-9]+),(.+),(.+),([0-9]+),([0-9]+),(.+),(.+),(.+),([0-9]+),([0-9]+),(.+),(.+)") # extract title from document
     wiki_id_to_title_file = open(f'{output_dir}/wiki_id_to_title.json', 'w')
-    with gzip.open(page_sql_gz_filepath, 'r') as f:
-        for line in tqdm(f, total=5775):
-            if len(line) < 500:
-                continue
-            parsed_line = line[27:].decode('utf-8')
-            parsed_line = parsed_line.split('),(')
-            parsed_line = [x[1:] if x[0] == '(' else x for x in parsed_line]
-            parsed_line = [x[:-3] if x[-3:-1] == ');' else x for x in parsed_line]
-            for x in parsed_line:
-                m = pattern.match(x)
-                if m is None:
+    original_path = cp.deepcopy(page_sql_gz_filepath)
+    if len(languages) > 1:
+        for lang in languages:
+            page_sql_gz_filepath = original_path.replace(output_dir,f"{output_dir}/{lang}").replace("{}",lang)
+            with gzip.open(page_sql_gz_filepath, 'r') as f:
+                for line in tqdm(f):
+                    if len(line) < 500: # 500 is the perfect length for extract title and text (from ReFinED's paper)
+                        continue
+
+                    parsed_line = line[27:].decode('utf-8')
+                    parsed_line = parsed_line.split('),(')
+                    parsed_line = [x[1:] if x[0] == '(' else x for x in parsed_line]
+                    parsed_line = [x[:-3] if x[-3:-1] == ');' else x for x in parsed_line]
+
+                    for x in parsed_line:
+                        m = pattern.match(x)
+                        if m is None:
+                            continue
+
+                        groups = m.groups()
+                        page_id, namespace, title, restrictions, redirect, new, random, touched, links, \
+                            latest, length, content_model, lang = groups
+                        if not namespace == '0':
+                            continue
+
+                        title = title[1:-1] # title always has a double quote in the text "TITLE"
+                        page_id_to_title[page_id] = title
+                        wiki_id_to_title_file.write(json.dumps({'wiki_page_id': page_id, 'wiki_title': title}) + '\n')
+    else:
+        with gzip.open(page_sql_gz_filepath, 'r') as f:
+            for line in tqdm(f):
+                if len(line) < 500: # 500 is the perfect length for extract title and text (from ReFinED's paper)
                     continue
-                groups = m.groups()
-                page_id, namespace, title, restrictions, redirect, new, random, touched, links, \
-                    latest, length, content_model, lang = groups
-                if not namespace == '0':
-                    continue
-                title = title[1:-1]
-                page_id_to_title[page_id] = title
-                wiki_id_to_title_file.write(json.dumps({'wiki_page_id': page_id, 'wiki_title': title}) + '\n')
+
+                parsed_line = line[27:].decode('utf-8')
+                parsed_line = parsed_line.split('),(')
+                parsed_line = [x[1:] if x[0] == '(' else x for x in parsed_line]
+                parsed_line = [x[:-3] if x[-3:-1] == ');' else x for x in parsed_line]
+
+                for x in parsed_line:
+                    m = pattern.match(x)
+                    if m is None:
+                        continue
+
+                    groups = m.groups()
+                    page_id, namespace, title, restrictions, redirect, new, random, touched, links, \
+                        latest, length, content_model, lang = groups
+                    if not namespace == '0':
+                        continue
+
+                    title = title[1:-1] # title always has a double quote in the text "TITLE"
+                    page_id_to_title[page_id] = title
+                    wiki_id_to_title_file.write(json.dumps({'wiki_page_id': page_id, 'wiki_title': title}) + '\n')
+
     wiki_id_to_title_file.close()
     return page_id_to_title
 
 
-def generate_redirects(redirect_sql_gz_filepath: str, output_dir: str, page_id_to_title: Dict[str, str]):
+def generate_redirects(languages, redirect_sql_gz_filepath: str, output_dir: str, page_id_to_title: Dict[str, str]):
     redirects_file = open(f'{output_dir}/redirects.json.part', 'w')
     pattern = re.compile("([0-9]+),([0-9]+),'(.+)','(.*)','(.*)'")
-    with gzip.open(redirect_sql_gz_filepath, 'r') as f:
-        for line in tqdm(f):
-            if len(line) < 500:
-                continue
-            parsed_line = line[31:].decode('utf-8')
-            parsed_line = parsed_line.split('),(')
-            parsed_line = [x[1:] if x[0] == '(' else x for x in parsed_line]
-            parsed_line = [x[:-3] if x[-3:-1] == ');' else x for x in parsed_line]
-            for x in parsed_line:
-                m = pattern.match(x)
-                if m is None:
-                    continue
-                groups = m.groups()
-                wiki_curid_surface, namespace, dest_wiki_title, _, _ = groups
-                if not namespace == '0':
-                    continue
-                if wiki_curid_surface in page_id_to_title:
-                    redirects_file.write(json.dumps({'wiki_title': page_id_to_title[wiki_curid_surface],
-                                                     'dest_title': dest_wiki_title}) + '\n')
+    original_path = cp.deepcopy(redirect_sql_gz_filepath)
+    
+    if len(languages) > 1:
+        for lang in languages:
+            redirect_sql_gz_filepath = original_path.replace(output_dir,f"{output_dir}/{lang}").replace("{}",lang)
+            with gzip.open(redirect_sql_gz_filepath, 'r') as f:
+                for line in tqdm(f):
+                    if len(line) < 500:
+                        continue
 
-        os.rename(os.path.join(output_dir, 'redirects.json.part'), os.path.join(output_dir, 'redirects.json'))
+                    parsed_line = line[31:].decode('utf-8')
+                    parsed_line = parsed_line.split('),(')
+                    parsed_line = [x[1:] if x[0] == '(' else x for x in parsed_line]
+                    parsed_line = [x[:-3] if x[-3:-1] == ');' else x for x in parsed_line]
+                    for x in parsed_line:
+                        m = pattern.match(x)
+                        if m is None:
+                            continue
+
+                        groups = m.groups()
+                        wiki_curid_surface, namespace, dest_wiki_title, _, _ = groups
+                        if not namespace == '0':
+                            continue
+
+                        if wiki_curid_surface in page_id_to_title:
+                            redirects_file.write(json.dumps({'wiki_title': page_id_to_title[wiki_curid_surface],
+                                                             'dest_title': dest_wiki_title}) + '\n')
+    else:
+        with gzip.open(redirect_sql_gz_filepath, 'r') as f:
+            for line in tqdm(f):
+                if len(line) < 500:
+                    continue
+                
+                parsed_line = line[31:].decode('utf-8')
+                parsed_line = parsed_line.split('),(')
+                parsed_line = [x[1:] if x[0] == '(' else x for x in parsed_line]
+                parsed_line = [x[:-3] if x[-3:-1] == ');' else x for x in parsed_line]
+                for x in parsed_line:
+                    m = pattern.match(x)
+                    if m is None:
+                        continue
+
+                    groups = m.groups()
+                    wiki_curid_surface, namespace, dest_wiki_title, _, _ = groups
+                    if not namespace == '0':
+                        continue
+
+                    if wiki_curid_surface in page_id_to_title:
+                        redirects_file.write(json.dumps({'wiki_title': page_id_to_title[wiki_curid_surface],
+                                                         'dest_title': dest_wiki_title}) + '\n')
+    os.rename(os.path.join(output_dir, 'redirects.json.part'), os.path.join(output_dir, 'redirects.json'))
 
 
 if __name__ == '__main__':

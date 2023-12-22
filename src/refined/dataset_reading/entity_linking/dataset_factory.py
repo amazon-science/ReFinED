@@ -17,7 +17,7 @@ class Datasets:
         self.preprocessor = preprocessor
         self.datasets_to_files = resource_manager.get_dataset_files()
         self.wikidata_mapper = wikidata_mapper
-
+                
     def get_aida_docs(
             self,
             split: str,

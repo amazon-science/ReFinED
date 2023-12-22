@@ -74,7 +74,7 @@ def load_subclasses(file_path: str, is_test: bool = False):
     line_num = 0
     with open(file_path, "r") as f:
         for line in tqdm(f, total=2e6, desc="Loading Wikidata subclasses"):
-            line = ujson.loads(line)
+            line = ujson.loads(line.replace("\x00",""))
             subclasses[line["qcode"]] = set(line["values"])
             for superclass in line["values"]:
                 subclasses_reversed[superclass].add(line["qcode"])
@@ -136,6 +136,7 @@ def load_human_qcode(file_path: str, is_test: bool = False):
 
 def normalize_surface_form(surface_form: str, remove_the: bool = True):
     surface_form = surface_form.lower()
+    surface_form = surface_form[:-1] if surface_form.endswith(',') else surface_form
     surface_form = surface_form[4:] if surface_form[:4] == "the " and remove_the else surface_form
     return (
         unidecode(surface_form)
