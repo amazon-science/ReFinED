@@ -252,7 +252,7 @@ See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more inform
 
 ## License
 
-This library is licensed under the CC-BY-NC 4.0 License.
+This library is licensed under the Apache 2.0 License.
 
 ## Contact us
 If you have questions please open Github issues instead of sending us emails, as some of the listed email addresses are no longer active.
